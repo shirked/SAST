@@ -1,9 +1,11 @@
-# app.py - VULNERABLE VERSION
+# app.py - SECURE VERSION
 from flask import Flask, request, render_template_string
 import sqlite3
+import os # Import os module for environment variables
 
 app = Flask(__name__)
-app.secret_key = "THIS_IS_A_VERY_INSECURE_HARDCODED_SECRET_KEY" # Vulnerability: Hardcoded Secret
+# Secure Fix 1: Get secret key from environment variable
+app.secret_key = os.environ.get("FLASK_SECRET_KEY", "fallback_insecure_key_for_dev_only")
 
 DATABASE = 'blog.db'
 
@@ -23,10 +25,12 @@ def index():
     db = get_db()
     comments = db.execute('SELECT * FROM comments').fetchall()
     db.close()
+    # Secure Fix 2: Use Jinja2's auto-escaping for content (Flask does this by default if not using |safe)
+    # For demonstration, explicitly show how to render safely if |safe was removed
     return render_template_string('''
         <h1>Simple Blog</h1>
         {% for comment in comments %}
-            <p><b>{{ comment.author }}</b>: {{ comment.content | safe }}</p>
+            <p><b>{{ comment.author }}</b>: {{ comment.content }}</p>
         {% endfor %}
         <hr>
         <h2>Add a Comment</h2>
@@ -43,8 +47,8 @@ def add_comment():
     content = request.form['content']
 
     db = get_db()
-    # Vulnerability: SQL Injection (direct string concatenation)
-    db.execute(f"INSERT INTO comments (author, content) VALUES ('{author}', '{content}')")
+    # Secure Fix 3: Use parameterized queries to prevent SQL Injection
+    db.execute("INSERT INTO comments (author, content) VALUES (?, ?)", (author, content))
     db.commit()
     db.close()
     return "Comment added! <a href='/'>Go back</a>"
